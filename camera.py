@@ -76,6 +76,7 @@ if bool(config['APScheduler']['enable']) == True:
     scheduler = BackgroundScheduler()
     scheduler.add_job(SchedulerAction.enableCamera, 'cron', hour=enableHour, minute=enableMinute)
     scheduler.add_job(SchedulerAction.disableCamera, 'cron', hour=disableHour, minute=disableMinute)
+    scheduler.start()
     print('Automatic camera masking has been added to the scheduled task.')
     print('Auto enable time: %s:%s, auto disable time: %s:%s.' % (enableHour, enableMinute, disableHour, disableMinute))
 

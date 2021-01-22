@@ -20,8 +20,7 @@ of the device you want to control. You can use the
 experience camera provided by the developer platform, or
 use the private camera in your account.
 
-Please fill these information into the variables below
-to replace the original content.
+Please fill in this information in config.ini.
 
 At the same time you also need to pay attention: not all
 devices support some functions in this program. This may
@@ -32,13 +31,26 @@ Note: DON'T USE THIS PROGRAM TOO OFTEN.
 
 '''
 
-import sys, time
+import sys, time, configparser
+from apscheduler.schedulers.background import BackgroundScheduler
 from api import CameraAPI
 
-device = 'deviceSerial'
-devcode = 'validateCode'
-appKey = 'appKey'
-appSecret = 'appSecret'
+
+class SchedulerAction():
+    def enableCamera():
+        result = CameraAPI.SwitchScene(accessToken, device, 0)
+
+    def disableCamera():
+        result = CameraAPI.SwitchScene(accessToken, device, 1)
+
+
+config = configparser.ConfigParser()
+config.read("./config.ini")
+
+device = config['General']['deviceSerial']
+devcode = config['General']['validateCode']
+appKey = config['General']['appKey']
+appSecret = config['General']['appSecret']
 
 result = CameraAPI.GetToken(appKey, appSecret)
 if result == False:
@@ -48,7 +60,7 @@ if result == False:
         sys.exit()
 else:
     accessToken, expireTime = result
-result = CameraAPI.SwitchScene(accessToken, device, 0)
+
 result = CameraAPI.disableEncryption(accessToken, device, devcode)
 liveurl = CameraAPI.GetLiveAddress(accessToken, device, devcode, 2)
 if liveurl is False:
@@ -56,13 +68,18 @@ if liveurl is False:
 else:
     print(liveurl)
 
-count = 0
+if bool(config['APScheduler']['enable']) == True:
+    enableCameraTime = config['APScheduler']['enableCameraTime'].split(':')
+    disableCameraTime = config['APScheduler']['disableCameraTime'].split(':')
+    enableHour, enableMinute = enableCameraTime
+    disableHour, disableMinute = disableCameraTime
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(SchedulerAction.enableCamera, 'cron', hour=enableHour, minute=enableMinute)
+    scheduler.add_job(SchedulerAction.disableCamera, 'cron', hour=disableHour, minute=disableMinute)
+    print('Automatic camera masking has been added to the scheduled task.')
+    print('Auto enable time: %s:%s, auto disable time: %s:%s.' % (enableHour, enableMinute, disableHour, disableMinute))
 
-while count <= 5:
-    result = CameraAPI.ptzControl(accessToken, device, 'start', direction=2, speed=2)
-    time.sleep(3)
-    result = CameraAPI.ptzControl(accessToken, device, 'stop')
-    time.sleep(3)
-    count = count + 1
+while True:
+    break
 
 result = CameraAPI.enableEncryption(accessToken, device)
